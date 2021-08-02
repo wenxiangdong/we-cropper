@@ -38,6 +38,10 @@ declare class WeCropper {
    */
   removeImage(): any;
   /**
+   * 更新cut
+   */
+  updateCut(cut: Options.cutOption): any;
+  /**
    * 获取裁剪图片（base64编码）
    */
   getCropperBase64(callback: (base64: string) => void): any;

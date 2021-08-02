@@ -916,6 +916,11 @@ function methods () {
         }
       })
   };
+
+  self.updateCut = function (cut) {
+    self.cut = cut;
+    self.updateCanvas();
+  };
 }
 
 /**
@@ -937,7 +942,7 @@ var getNewScale = function (oldScale, oldDistance, zoom, touch0, touch1) {
   return oldScale + 0.001 * zoom * (newDistance - oldDistance)
 };
 
-function update () {
+function update() {
   var self = this;
 
   if (!self.src) { return }
@@ -945,6 +950,28 @@ function update () {
   self.__oneTouchStart = function (touch) {
     self.touchX0 = Math.round(touch.x);
     self.touchY0 = Math.round(touch.y);
+    var ref = self.cut;
+    var x = ref.x;
+    var y = ref.y;
+    var width = ref.width;
+    var height = ref.height;
+    // 从 左上角 顺时针 到左下角 
+    var fourTrigger = [
+      [x, y], [x + width, y], [x + width, y + height], [x, y + height]
+    ];
+    var triggers = [
+      "topLeft", "topRight", "bottomRight", "bottomLeft"
+    ];
+    var index = fourTrigger.findIndex(function (ref) {
+      var x = ref[0];
+      var y = ref[1];
+
+      var deltaX = Math.round(Math.abs(x - touch.x));
+      var deltaY = Math.round(Math.abs(y - touch.y));
+      return deltaX < 10 && deltaY < 10;
+    });
+    self.activeCut = triggers[index];
+    self.cut0 = Object.assign({}, self.cut);
   };
 
   self.__oneTouchMove = function (touch) {
@@ -953,15 +980,51 @@ function update () {
     if (self.touchended) {
       return self.updateCanvas()
     }
+
     xMove = Math.round(touch.x - self.touchX0);
     yMove = Math.round(touch.y - self.touchY0);
 
-    var imgLeft = Math.round(self.rectX + xMove);
-    var imgTop = Math.round(self.rectY + yMove);
+    /** 裁剪生效中 */
+    if (self.activeCut) {
+      var newCut = Object.assign({}, self.cut0 || {});
+      switch (self.activeCut) {
+        case "topLeft": {
+          newCut.x += xMove;
+          newCut.y += yMove;
+          newCut.width -= xMove;
+          newCut.height -= yMove;
+          break;
+        }
+        case "topRight": {
+          newCut.y += yMove;
+          newCut.width += xMove;
+          newCut.height -= yMove;
+          break;
+        }
+        case "bottomRight": {
+          newCut.width += xMove;
+          newCut.height += yMove;
+          break;
+        }
+        case "bottomLeft": {
+          newCut.x += xMove;
+          newCut.width -= xMove;
+          newCut.height += yMove;
+          break;
+        }
+        default: break;
+      }
+      self.updateCut(newCut);
+    } else {
+      var imgLeft = Math.round(self.rectX + xMove);
+      var imgTop = Math.round(self.rectY + yMove);
 
-    self.outsideBound(imgLeft, imgTop);
+      self.outsideBound(imgLeft, imgTop);
 
-    self.updateCanvas();
+      self.updateCanvas();
+    }
+
+
   };
 
   self.__twoTouchStart = function (touch0, touch1) {
@@ -1004,6 +1067,8 @@ function update () {
     self.oldScale = self.newScale;
     self.rectX = self.imgLeft;
     self.rectY = self.imgTop;
+    self.activeCut = undefined;
+    self.cut0 = undefined;
   };
 }
 
@@ -1099,6 +1164,11 @@ function cut () {
     var mask = ref.mask; if ( mask === void 0 ) mask = 'rgba(0, 0, 0, 0.3)';
     var lineWidth = ref.lineWidth; if ( lineWidth === void 0 ) lineWidth = 1;
 
+    var ref$1 = self.cut;
+    var x = ref$1.x; if ( x === void 0 ) x = 0;
+    var y = ref$1.y; if ( y === void 0 ) y = 0;
+    var width = ref$1.width; if ( width === void 0 ) width = boundWidth;
+    var height = ref$1.height; if ( height === void 0 ) height = boundHeight;
     var half = lineWidth / 2;
     var boundOption = [
       {

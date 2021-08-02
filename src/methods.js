@@ -178,4 +178,9 @@ export default function methods () {
         }
       })
   }
+
+  self.updateCut = (cut) => {
+    self.cut = cut;
+    self.updateCanvas();
+  }
 }
